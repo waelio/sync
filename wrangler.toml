@@ -1,8 +1,0 @@
-name = "waelio-sync"
-main = "src/index.ts"
-compatibility_date = "2024-02-08"
-
-# KV Namespace for our Database
-# kv_namespaces = [
-#   { binding = "SYNC_KV", id = "your-kv-id-here" }
-# ]
