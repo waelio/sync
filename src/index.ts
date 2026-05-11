@@ -448,7 +448,7 @@ const uiHtml = `<!DOCTYPE html>
         }
     </script>
 </body>
-</html>\`;
+</html>`;
 
 // Helper to generate IDs
 const generateId = () => crypto.randomUUID()
@@ -479,7 +479,7 @@ app.get('/manifest.json', (c) => {
 
 // Service Worker for Offline Caching
 app.get('/service-worker.js', (c) => {
-  const swCode = \`
+  const swCode = `
     const CACHE_NAME = 'waelio-sync-v1';
     self.addEventListener('install', (e) => {
       e.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(['/'])));
@@ -488,7 +488,7 @@ app.get('/service-worker.js', (c) => {
       if (e.request.method === 'GET' && e.request.url.includes('/api/items')) return;
       e.respondWith(caches.match(e.request).then((res) => res || fetch(e.request)));
     });
-  \`;
+  `;
   c.header('Content-Type', 'application/javascript');
   return c.body(swCode);
 })
