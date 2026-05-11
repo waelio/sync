@@ -1686,6 +1686,8 @@ dependencies = [
  "actix-web",
  "axum",
  "futures",
+ "serde",
+ "serde_json",
  "tokio",
  "tokio-tungstenite",
  "tower 0.4.13",

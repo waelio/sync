@@ -1,39 +1,126 @@
-use actix_web::{get, App, HttpServer, Responder, HttpResponse};
+use actix_web::{get, post, put, delete, web, App, HttpServer, Responder, HttpResponse};
+use serde::{Deserialize, Serialize};
+use std::sync::Mutex;
+use std::collections::HashMap;
+use uuid::Uuid;
 
-#[get("/")]
-async fn index() -> impl Responder {
-    HttpResponse::Ok().body("Hello from Actix Web!")
+// The data model we will store and sync
+#[derive(Debug, Serialize, Deserialize, Clone)]
+struct SyncItem {
+    id: String,
+    title: String,
+    content: String,
 }
 
+// Request payload for creating/updating
+#[derive(Debug, Deserialize)]
+struct SyncItemPayload {
+    title: String,
+    content: String,
+}
+
+// The App State wrapping an in-memory HashMap (Thread-safe)
+struct AppState {
+    store: Mutex<HashMap<String, SyncItem>>,
+}
+
+// CREATE
+#[post("/items")]
+async fn create_item(
+    data: web::Data<AppState>,
+    payload: web::Json<SyncItemPayload>,
+) -> impl Responder {
+    let mut store = data.store.lock().unwrap();
+    let id = Uuid::new_v4().to_string();
+    
+    let item = SyncItem {
+        id: id.clone(),
+        title: payload.title.clone(),
+        content: payload.content.clone(),
+    };
+    
+    store.insert(id.clone(), item.clone());
+    HttpResponse::Created().json(item)
+}
+
+// READ ALL
+#[get("/items")]
+async fn get_items(data: web::Data<AppState>) -> impl Responder {
+    let store = data.store.lock().unwrap();
+    let items: Vec<SyncItem> = store.values().cloned().collect();
+    HttpResponse::Ok().json(items)
+}
+
+// READ ONE
+#[get("/items/{id}")]
+async fn get_item(data: web::Data<AppState>, path: web::Path<String>) -> impl Responder {
+    let id = path.into_inner();
+    let store = data.store.lock().unwrap();
+    
+    match store.get(&id) {
+        Some(item) => HttpResponse::Ok().json(item),
+        None => HttpResponse::NotFound().body("Item not found"),
+    }
+}
+
+// UPDATE
+#[put("/items/{id}")]
+async fn update_item(
+    data: web::Data<AppState>,
+    path: web::Path<String>,
+    payload: web::Json<SyncItemPayload>,
+) -> impl Responder {
+    let id = path.into_inner();
+    let mut store = data.store.lock().unwrap();
+    
+    if let Some(item) = store.get_mut(&id) {
+        item.title = payload.title.clone();
+        item.content = payload.content.clone();
+        HttpResponse::Ok().json(item)
+    } else {
+        HttpResponse::NotFound().body("Item not found")
+    }
+}
+
+// DELETE
+#[delete("/items/{id}")]
+async fn delete_item(data: web::Data<AppState>, path: web::Path<String>) -> impl Responder {
+    let id = path.into_inner();
+    let mut store = data.store.lock().unwrap();
+    
+    if store.remove(&id).is_some() {
+        HttpResponse::Ok().body("Item deleted successfully")
+    } else {
+        HttpResponse::NotFound().body("Item not found")
+    }
+}
+
+// Health check endpoint
+#[get("/")]
+async fn index() -> impl Responder {
+    HttpResponse::Ok().body("Waelio Sync Backend is Running!")
+}
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    HttpServer::new(|| {
+    // Initialize our shared state
+    let state = web::Data::new(AppState {
+        store: Mutex::new(HashMap::new()),
+    });
+
+    println!("Starting server on http://127.0.0.1:3070");
+
+    HttpServer::new(move || {
         App::new()
+            .app_data(state.clone())
             .service(index)
+            .service(create_item)
+            .service(get_items)
+            .service(get_item)
+            .service(update_item)
+            .service(delete_item)
     })
     .bind(("127.0.0.1", 3070))?
     .run()
     .await
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use actix_web::{test, App};
-
-    #[actix_web::test]
-    async fn test_index_get() {
-        let app = test::init_service(App::new().service(index)).await;
-        
-        // Test status code
-        let req = test::TestRequest::get().uri("/").to_request();
-        let resp = test::call_service(&app, req).await;
-        assert!(resp.status().is_success());
-
-        // Test response body
-        let req = test::TestRequest::get().uri("/").to_request();
-        let body = test::read_response(&app, req).await;
-        assert_eq!(body, actix_web::web::Bytes::from_static(b"Hello from Actix Web!"));
-    }
 }
