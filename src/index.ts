@@ -206,6 +206,45 @@ const uiHtml = `<!DOCTYPE html>
             font-style: italic;
         }
 
+        /* Loading Spinner Overlay */
+        .loader-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .loader-overlay.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(255, 255, 255, 0.1);
+            border-top-color: #8b5cf6;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        .loader-text {
+            margin-top: 1rem;
+            color: var(--text-primary);
+            font-weight: 600;
+            letter-spacing: 2px;
+            animation: pulse 1.5s infinite;
+        }
+
         /* Animations */
         @keyframes fadeInDown {
             from { opacity: 0; transform: translateY(-20px); }
@@ -221,9 +260,18 @@ const uiHtml = `<!DOCTYPE html>
             from { opacity: 0; transform: translateX(-20px); }
             to { opacity: 1; transform: translateX(0); }
         }
+
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
     </style>
 </head>
 <body>
+
+    <!-- Global Loading Overlay -->
+    <div id="loader" class="loader-overlay">
+        <div class="spinner"></div>
+        <div class="loader-text">SYNCING...</div>
+    </div>
 
     <div class="container">
         <header>
@@ -254,16 +302,27 @@ const uiHtml = `<!DOCTYPE html>
 
     <script>
         const API_URL = '/api/items';
+        const loader = document.getElementById('loader');
+
+        const showLoader = () => loader.classList.add('active');
+        const hideLoader = () => loader.classList.remove('active');
+
+        // To make the animation highly visible for testing, we'll force a slight artificial delay (300ms)
+        const delay = ms => new Promise(res => setTimeout(res, ms));
 
         // Load Items on startup
         async function fetchItems() {
+            showLoader();
             try {
+                await delay(300); // Artificial delay to show off the loader
                 const response = await fetch(API_URL);
                 const items = await response.json();
                 renderItems(items);
             } catch (error) {
                 console.error("Failed to fetch items", error);
                 document.getElementById('item-list').innerHTML = \`<div class="empty-state" style="color: #ef4444;">Failed to connect to backend. Make sure the server is running.</div>\`;
+            } finally {
+                hideLoader();
             }
         }
 
@@ -297,6 +356,7 @@ const uiHtml = `<!DOCTYPE html>
         // Create Item
         document.getElementById('create-form').addEventListener('submit', async (e) => {
             e.preventDefault();
+            showLoader();
             const titleInput = document.getElementById('title');
             const contentInput = document.getElementById('content');
 
@@ -306,6 +366,7 @@ const uiHtml = `<!DOCTYPE html>
             };
 
             try {
+                await delay(400); // Artificial delay for UX
                 await fetch(API_URL, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -315,21 +376,24 @@ const uiHtml = `<!DOCTYPE html>
                 // Clear form and refresh
                 titleInput.value = '';
                 contentInput.value = '';
-                fetchItems();
+                await fetchItems(); // This will toggle loader itself
             } catch (error) {
                 alert("Failed to save item!");
+                hideLoader();
             }
         });
 
         // Delete Item
         async function deleteItem(id) {
             if (!confirm("Are you sure you want to delete this item?")) return;
-            
+            showLoader();
             try {
+                await delay(300);
                 await fetch(\`\${API_URL}/\${id}\`, { method: 'DELETE' });
-                fetchItems(); // Refresh
+                await fetchItems(); // Refresh
             } catch (error) {
                 alert("Failed to delete item!");
+                hideLoader();
             }
         }
 
