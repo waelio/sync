@@ -2,6 +2,7 @@
   "name": "@waelio/sync",
   "version": "1.0.0",
   "main": "src/index.ts",
+  "private": false,
   "scripts": {
     "deploy": "wrangler pages deploy public",
     "dev": "wrangler pages dev public"
