@@ -1,32 +1,47 @@
-# Waelio Sync
+# @waelio/sync
 
-A simple Actix Web server in Rust.
+A TypeScript Cloudflare Workers application using Hono for the Waelio ecosystem.
+
+## Overview
+
+This is the synchronization API for the Waelio dashboard and ecosystem. It handles data synchronization using Cloudflare Workers and KV namespaces.
 
 ## Features
 
-- A basic `/` endpoint that returns "Hello from Actix Web!"
-- Built-in Actix Web unit testing.
+- **Cloudflare Workers** natively edge-deployed
+- **Hono** framework for fast and lightweight routing
+- **TypeScript** for strict type safety
+- Built-in KV Namespace integration (`SYNC_KV`)
 
-## Getting Started
+## Development
 
 ### Prerequisites
 
-- [Rust & Cargo](https://rustup.rs/)
+- Node.js (v18+)
+- npm or pnpm
+- [Wrangler CLI](https://developers.cloudflare.com/workers/cli-wrangler/install-update)
 
-### Running the server
-
-To run the web server locally, execute:
-
-```bash
-cargo run
-```
-
-The server will start on `http://127.0.0.1:3070`.
-
-### Running tests
-
-To run the included unit tests, use:
+### Running Locally
 
 ```bash
-cargo test
+# Start the local development server (port 8787)
+npm run dev
 ```
+
+### Type Checking
+
+No separate compile step is needed since Wrangler handles transpilation. You can run type-checking using:
+```bash
+npx tsc --noEmit
+```
+
+### Deployment
+
+Deploy to Cloudflare Workers:
+```bash
+npm run deploy
+```
+
+---
+
+*Part of the [Waelio](https://waelio.com) Ecosystem.*
