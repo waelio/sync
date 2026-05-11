@@ -1,6 +1,6 @@
 {
   "name": "@waelio/sync",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Cloudflare Workers sync app for the Waelio ecosystem",
   "author": "Waelio <waelio@waelio.com> (https://waelio.com)",
   "homepage": "https://github.com/waelio/waelio-sync#readme",
