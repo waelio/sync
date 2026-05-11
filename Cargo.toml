@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 actix-web = "4"
+actix-files = "4"
 axum = "0.7"
 tokio = { version = "1", features = ["full"] }
 tokio-tungstenite = "0.21"

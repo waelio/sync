@@ -1,4 +1,5 @@
 use actix_web::{get, post, put, delete, web, App, HttpServer, Responder, HttpResponse};
+use actix_files::Files;
 use serde::{Deserialize, Serialize};
 use std::sync::Mutex;
 use std::collections::HashMap;
@@ -123,8 +124,8 @@ async fn delete_item(data: web::Data<AppState>, path: web::Path<String>) -> impl
 }
 
 // Health check endpoint
-#[get("/")]
-async fn index() -> impl Responder {
+#[get("/health")]
+async fn health() -> impl Responder {
     HttpResponse::Ok().body("Waelio Sync Backend is Running!")
 }
 
@@ -142,12 +143,18 @@ async fn main() -> std::io::Result<()> {
     HttpServer::new(move || {
         App::new()
             .app_data(state.clone())
-            .service(index)
-            .service(create_item)
-            .service(get_items)
-            .service(get_item)
-            .service(update_item)
-            .service(delete_item)
+            // Mount the API under /api
+            .service(
+                web::scope("/api")
+                    .service(health)
+                    .service(create_item)
+                    .service(get_items)
+                    .service(get_item)
+                    .service(update_item)
+                    .service(delete_item)
+            )
+            // Serve static UI files from the "static" directory at the root "/"
+            .service(Files::new("/", "./static").index_file("index.html"))
     })
     .bind(("127.0.0.1", 3070))?
     .run()
