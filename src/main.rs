@@ -5,9 +5,8 @@ use std::sync::Mutex;
 use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
+use std::env;
 use uuid::Uuid;
-
-const DB_FILE: &str = "sync_data.json";
 
 // The data model we will store and sync
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -24,22 +23,23 @@ struct SyncItemPayload {
     content: String,
 }
 
-// The App State wrapping an in-memory HashMap (Thread-safe)
+// The App State wrapping an in-memory HashMap and the database path
 struct AppState {
     store: Mutex<HashMap<String, SyncItem>>,
+    db_path: String,
 }
 
 // Helper function to save to disk
-fn save_to_disk(store: &HashMap<String, SyncItem>) {
+fn save_to_disk(store: &HashMap<String, SyncItem>, path: &str) {
     if let Ok(data) = serde_json::to_string_pretty(store) {
-        let _ = fs::write(DB_FILE, data);
+        let _ = fs::write(path, data);
     }
 }
 
 // Helper function to load from disk
-fn load_from_disk() -> HashMap<String, SyncItem> {
-    if Path::new(DB_FILE).exists() {
-        if let Ok(data) = fs::read_to_string(DB_FILE) {
+fn load_from_disk(path: &str) -> HashMap<String, SyncItem> {
+    if Path::new(path).exists() {
+        if let Ok(data) = fs::read_to_string(path) {
             if let Ok(store) = serde_json::from_str(&data) {
                 return store;
             }
@@ -64,7 +64,7 @@ async fn create_item(
     };
     
     store.insert(id.clone(), item.clone());
-    save_to_disk(&store); // Persist change
+    save_to_disk(&store, &data.db_path); // Persist change
     
     HttpResponse::Created().json(item)
 }
@@ -108,7 +108,7 @@ async fn update_item(
     };
 
     if let Some(item) = updated_item {
-        save_to_disk(&store); // Persist change
+        save_to_disk(&store, &data.db_path); // Persist change
         HttpResponse::Ok().json(item)
     } else {
         HttpResponse::NotFound().body("Item not found")
@@ -122,7 +122,7 @@ async fn delete_item(data: web::Data<AppState>, path: web::Path<String>) -> impl
     let mut store = data.store.lock().unwrap();
     
     if store.remove(&id).is_some() {
-        save_to_disk(&store); // Persist change
+        save_to_disk(&store, &data.db_path); // Persist change
         HttpResponse::Ok().body("Item deleted successfully")
     } else {
         HttpResponse::NotFound().body("Item not found")
@@ -137,14 +137,23 @@ async fn health() -> impl Responder {
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
+    // Determine database path from environment variable, fallback to local file
+    let db_path = env::var("DB_FILE_PATH").unwrap_or_else(|_| "sync_data.json".to_string());
+    
+    // Determine host and port from environment (essential for Docker/Cloud deployments)
+    let host = env::var("HOST").unwrap_or_else(|_| "127.0.0.1".to_string());
+    let port_str = env::var("PORT").unwrap_or_else(|_| "3070".to_string());
+    let port: u16 = port_str.parse().unwrap_or(3070);
+
     // Load existing data from disk on startup
-    let initial_store = load_from_disk();
+    let initial_store = load_from_disk(&db_path);
     let state = web::Data::new(AppState {
         store: Mutex::new(initial_store),
+        db_path: db_path.clone(),
     });
 
-    println!("Starting server on http://127.0.0.1:3070");
-    println!("Data is persisting to {}", DB_FILE);
+    println!("Starting server on http://{}:{}", host, port);
+    println!("Data is persisting to {}", db_path);
 
     HttpServer::new(move || {
         App::new()
@@ -162,7 +171,7 @@ async fn main() -> std::io::Result<()> {
             // Serve static UI files from the "static" directory at the root "/"
             .service(Files::new("/", "./static").index_file("index.html"))
     })
-    .bind(("127.0.0.1", 3070))?
+    .bind((host.as_str(), port))?
     .run()
     .await
 }
