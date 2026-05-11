@@ -228,13 +228,38 @@ const uiHtml = `<!DOCTYPE html>
             pointer-events: all;
         }
 
-        .spinner {
-            width: 50px;
-            height: 50px;
-            border: 4px solid rgba(255, 255, 255, 0.1);
-            border-top-color: #8b5cf6;
+        .quasar-spinner {
+            position: relative;
+            width: 70px;
+            height: 70px;
             border-radius: 50%;
+            border: 3px solid transparent;
+            border-top-color: #3b82f6;
+            border-bottom-color: #3b82f6;
+            animation: spin 1.5s linear infinite;
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.5);
+        }
+        .quasar-spinner::before {
+            content: '';
+            position: absolute;
+            top: 6px; left: 6px; right: 6px; bottom: 6px;
+            border-radius: 50%;
+            border: 3px solid transparent;
+            border-top-color: #8b5cf6;
+            border-bottom-color: #8b5cf6;
+            animation: spin 2s linear infinite reverse;
+            box-shadow: inset 0 0 10px rgba(139, 92, 246, 0.5);
+        }
+        .quasar-spinner::after {
+            content: '';
+            position: absolute;
+            top: 18px; left: 18px; right: 18px; bottom: 18px;
+            border-radius: 50%;
+            border: 3px solid transparent;
+            border-top-color: #ec4899;
+            border-bottom-color: #ec4899;
             animation: spin 1s linear infinite;
+            box-shadow: 0 0 8px rgba(236, 72, 153, 0.6);
         }
 
         .loader-text {
@@ -269,7 +294,7 @@ const uiHtml = `<!DOCTYPE html>
 
     <!-- Global Loading Overlay -->
     <div id="loader" class="loader-overlay">
-        <div class="spinner"></div>
+        <div class="quasar-spinner"></div>
         <div class="loader-text">SYNCING...</div>
     </div>
 
