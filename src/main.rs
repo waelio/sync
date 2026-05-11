@@ -2,7 +2,11 @@ use actix_web::{get, post, put, delete, web, App, HttpServer, Responder, HttpRes
 use serde::{Deserialize, Serialize};
 use std::sync::Mutex;
 use std::collections::HashMap;
+use std::fs;
+use std::path::Path;
 use uuid::Uuid;
+
+const DB_FILE: &str = "sync_data.json";
 
 // The data model we will store and sync
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -24,6 +28,25 @@ struct AppState {
     store: Mutex<HashMap<String, SyncItem>>,
 }
 
+// Helper function to save to disk
+fn save_to_disk(store: &HashMap<String, SyncItem>) {
+    if let Ok(data) = serde_json::to_string_pretty(store) {
+        let _ = fs::write(DB_FILE, data);
+    }
+}
+
+// Helper function to load from disk
+fn load_from_disk() -> HashMap<String, SyncItem> {
+    if Path::new(DB_FILE).exists() {
+        if let Ok(data) = fs::read_to_string(DB_FILE) {
+            if let Ok(store) = serde_json::from_str(&data) {
+                return store;
+            }
+        }
+    }
+    HashMap::new()
+}
+
 // CREATE
 #[post("/items")]
 async fn create_item(
@@ -40,6 +63,8 @@ async fn create_item(
     };
     
     store.insert(id.clone(), item.clone());
+    save_to_disk(&store); // Persist change
+    
     HttpResponse::Created().json(item)
 }
 
@@ -76,6 +101,7 @@ async fn update_item(
     if let Some(item) = store.get_mut(&id) {
         item.title = payload.title.clone();
         item.content = payload.content.clone();
+        save_to_disk(&store); // Persist change
         HttpResponse::Ok().json(item)
     } else {
         HttpResponse::NotFound().body("Item not found")
@@ -89,6 +115,7 @@ async fn delete_item(data: web::Data<AppState>, path: web::Path<String>) -> impl
     let mut store = data.store.lock().unwrap();
     
     if store.remove(&id).is_some() {
+        save_to_disk(&store); // Persist change
         HttpResponse::Ok().body("Item deleted successfully")
     } else {
         HttpResponse::NotFound().body("Item not found")
@@ -103,12 +130,14 @@ async fn index() -> impl Responder {
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    // Initialize our shared state
+    // Load existing data from disk on startup
+    let initial_store = load_from_disk();
     let state = web::Data::new(AppState {
-        store: Mutex::new(HashMap::new()),
+        store: Mutex::new(initial_store),
     });
 
     println!("Starting server on http://127.0.0.1:3070");
+    println!("Data is persisting to {}", DB_FILE);
 
     HttpServer::new(move || {
         App::new()
