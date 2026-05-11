@@ -1,6 +1,24 @@
 {
   "name": "@waelio/sync",
   "version": "1.0.0",
+  "description": "Cloudflare Workers sync app for the Waelio ecosystem",
+  "author": "Waelio <waelio@waelio.com> (https://waelio.com)",
+  "homepage": "https://github.com/waelio/waelio-sync#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/waelio/waelio-sync.git"
+  },
+  "bugs": {
+    "url": "https://github.com/waelio/waelio-sync/issues"
+  },
+  "keywords": [
+    "waelio",
+    "sync",
+    "cloudflare",
+    "workers",
+    "hono"
+  ],
+  "license": "MIT",
   "main": "src/index.ts",
   "publishConfig": {
     "access": "public"
