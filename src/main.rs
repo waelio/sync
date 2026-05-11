@@ -99,9 +99,15 @@ async fn update_item(
     let id = path.into_inner();
     let mut store = data.store.lock().unwrap();
     
-    if let Some(item) = store.get_mut(&id) {
+    let updated_item = if let Some(item) = store.get_mut(&id) {
         item.title = payload.title.clone();
         item.content = payload.content.clone();
+        Some(item.clone())
+    } else {
+        None
+    };
+
+    if let Some(item) = updated_item {
         save_to_disk(&store); // Persist change
         HttpResponse::Ok().json(item)
     } else {
