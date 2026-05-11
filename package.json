@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "main": "src/index.ts",
   "scripts": {
-    "deploy": "wrangler deploy"
+    "deploy": "wrangler pages deploy public",
+    "dev": "wrangler pages dev public"
   },
   "dependencies": {
     "hono": "^4.0.0"
