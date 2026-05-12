@@ -6,7 +6,7 @@
   "homepage": "https://github.com/waelio/waelio-sync#readme",
   "repository": {
     "type": "git",
-    "url": "https://github.com/waelio/waelio-sync.git"
+    "url": "git+https://github.com/waelio/waelio-sync.git"
   },
   "bugs": {
     "url": "https://github.com/waelio/waelio-sync/issues"
