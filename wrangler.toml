@@ -1,3 +1,8 @@
 name = "waelio-sync"
 pages_build_output_dir = "public"
 compatibility_date = "2024-02-08"
+
+[[kv_namespaces]]
+binding = "SYNC_KV"
+id = "replace-with-production-kv-id"
+preview_id = "local-preview-id"

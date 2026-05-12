@@ -64,8 +64,8 @@ app.post('/api/items', async (c) => {
       createdAt: new Date().toISOString()
     }
     
-    // Save to KV (Disabled for deployment without KV bound)
-    // await c.env.SYNC_KV.put(id, JSON.stringify(item))
+    // Save to KV
+    await c.env.SYNC_KV.put(id, JSON.stringify(item))
     
     return c.json(item, 201)
   } catch (error) {
@@ -75,9 +75,25 @@ app.post('/api/items', async (c) => {
 
 // READ ALL
 app.get('/api/items', async (c) => {
-  return c.json([
-    { id: '1', title: 'Your Cloudflare Backend', content: 'This is live on Cloudflare! Setup KV to store real data.' }
-  ])
+  try {
+    const { keys } = await c.env.SYNC_KV.list()
+    const items = await Promise.all(
+      keys.map(async (key) => {
+        const itemStr = await c.env.SYNC_KV.get(key.name)
+        return itemStr ? JSON.parse(itemStr) : null
+      })
+    )
+    return c.json(items.filter(Boolean))
+  } catch (error) {
+    return c.json([], 200)
+  }
+})
+
+// DELETE
+app.delete('/api/items/:id', async (c) => {
+  const id = c.req.param('id')
+  await c.env.SYNC_KV.delete(id)
+  return c.json({ success: true })
 })
 
 export default app
