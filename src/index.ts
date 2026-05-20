@@ -69,31 +69,42 @@ app.post('/api/items', async (c) => {
     
     return c.json(item, 201)
   } catch (error) {
-    return c.json({ error: 'Invalid payload' }, 400)
+    return c.json({ error: 'Invalid payload or KV save failed' }, 400)
   }
 })
 
 // READ ALL
 app.get('/api/items', async (c) => {
   try {
-    const { keys } = await c.env.SYNC_KV.list()
-    const items = await Promise.all(
-      keys.map(async (key) => {
-        const itemStr = await c.env.SYNC_KV.get(key.name)
-        return itemStr ? JSON.parse(itemStr) : null
-      })
-    )
-    return c.json(items.filter(Boolean))
+    const list = await c.env.SYNC_KV.list()
+    const items = []
+    for (const key of list.keys) {
+      const val = await c.env.SYNC_KV.get(key.name)
+      if (val) {
+        try {
+          items.push(JSON.parse(val))
+        } catch {
+          // Ignore invalid JSON stored in KV
+        }
+      }
+    }
+    // Sort items by createdAt descending (newest first)
+    items.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    return c.json(items)
   } catch (error) {
-    return c.json([], 200)
+    return c.json({ error: 'Failed to retrieve items from KV' }, 500)
   }
 })
 
 // DELETE
 app.delete('/api/items/:id', async (c) => {
-  const id = c.req.param('id')
-  await c.env.SYNC_KV.delete(id)
-  return c.json({ success: true })
+  try {
+    const id = c.req.param('id')
+    await c.env.SYNC_KV.delete(id)
+    return c.json({ success: true })
+  } catch (error) {
+    return c.json({ error: 'Failed to delete item from KV' }, 500)
+  }
 })
 
 export default app

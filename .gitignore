@@ -2,3 +2,7 @@
 .rustup/
 .DS_Store
 sync_data.json
+node_modules/
+.wrangler/
+dist/
+*.log
