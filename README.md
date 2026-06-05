@@ -1,100 +1,167 @@
 # @waelio/sync
 
-[![NPM version](https://img.shields.io/npm/v/@waelio/sync.svg?style=flat&color=red&label=NPM)](https://www.npmjs.com/package/@waelio/sync)
-[![NPM weekly downloads](https://img.shields.io/npm/dw/@waelio/sync.svg?style=flat)](https://www.npmjs.com/package/@waelio/sync)
-[![License: MIT](https://img.shields.io/npm/l/@waelio/sync)](https://github.com/waelio/waelio-sync/blob/main/LICENSE)
+[![NPM version](https://img.shields.io/npm/v/@waelio/sync.svg?style=flat&color=6366f1&label=NPM)](https://www.npmjs.com/package/@waelio/sync)
+[![NPM weekly downloads](https://img.shields.io/npm/dw/@waelio/sync.svg?style=flat&color=8b5cf6)](https://www.npmjs.com/package/@waelio/sync)
+[![License: MIT](https://img.shields.io/npm/l/@waelio/sync?color=10b981)](LICENSE)
 
-A high-performance, edge-deployed synchronization API built on **Cloudflare Workers** and **Hono** for the Waelio ecosystem.
+**Edge-first data sync built on Cloudflare Workers + KV.**  
+Deploy your own sync backend in minutes — or install the SDK to talk to any `@waelio/sync` endpoint from your app, Worker, or Node service.
 
 ---
 
-## 📖 Introduction
+## Two ways to use it
 
-`@waelio/sync` acts as the central nervous system for data synchronization across the Waelio platform. Designed to run entirely on the edge, it leverages Cloudflare Workers to deliver millisecond response times globally. By pairing the ultra-lightweight [Hono](https://hono.dev/) framework with Cloudflare's KV namespaces, this package ensures state and configuration data stay synchronized efficiently and securely.
-
-Whether it's routing dashboard analytics, handling CLI webhooks, or syncing cross-device configurations, `@waelio/sync` is the dedicated worker bridging those connections.
-
-## ✨ Features
-
-- **Edge-First Architecture**: Deploys directly to Cloudflare Workers for zero cold-start, low-latency execution.
-- **Hono Framework**: Uses `hono` for fast, lightweight routing with standard Web API constructs (`c.json()`, `c.text()`).
-- **KV Storage Integration**: Built-in support for Cloudflare KV (`SYNC_KV`), enabling rapid key-value data persistence and retrieval across edge nodes.
-- **Strictly Typed**: 100% TypeScript compliance ensuring robust environment bindings and strict payload validation.
-- **No Build Step**: Takes advantage of Wrangler's on-the-fly TypeScript compilation.
-
-## 🚀 Getting Started
-
-### Prerequisites
-
-To develop or deploy this worker, you'll need:
-- Node.js (v18 or higher)
-- `npm`, `pnpm`, or `yarn`
-- Cloudflare [Wrangler CLI](https://developers.cloudflare.com/workers/cli-wrangler/install-update) installed (`npx wrangler`)
-
-### Local Development
-
-Running the application locally spins up a Wrangler development server on port `8787` with simulated KV storage.
+### 1. Install the SDK (npm)
 
 ```bash
-# Start the local development server
-npm run dev
+npm install @waelio/sync
 ```
 
-### Deployment
+```ts
+import { SyncClient } from '@waelio/sync'
 
-Deploying the worker to Cloudflare's global edge network is handled entirely by Wrangler:
+const sync = new SyncClient('https://your-sync-worker.workers.dev')
+
+// Create
+const item = await sync.create({ title: 'Hello', content: 'World', tags: ['demo'] })
+
+// Read all
+const { items, total } = await sync.list()
+
+// Read one
+const one = await sync.get(item.id)
+
+// Update
+const updated = await sync.update(item.id, { content: 'Updated!' })
+
+// Delete
+await sync.delete(item.id)
+
+// Health check
+const alive = await sync.ping() // true | false
+```
+
+The SDK works in **Cloudflare Workers**, **Node.js**, **Deno**, and the **browser** — anywhere `fetch` is available.
+
+---
+
+### 2. Deploy your own sync Worker
 
 ```bash
-# Build and deploy to Cloudflare
+git clone https://github.com/waelio/sync
+cd sync
+npm install
+```
+
+Create a KV namespace on Cloudflare:
+
+```bash
+npx wrangler kv namespace create SYNC_KV
+```
+
+Paste the returned `id` into `wrangler.toml`:
+
+```toml
+[[kv_namespaces]]
+binding = "SYNC_KV"
+id = "YOUR_KV_ID_HERE"
+```
+
+Then deploy:
+
+```bash
 npm run deploy
 ```
 
-> **Note:** Because Wrangler handles transpilation automatically, there is no separate compile step needed before deploying. However, you can ensure your types are clean by running `npx tsc --noEmit`.
+That's it. Your sync backend is live globally on Cloudflare's edge.
 
-## 🛠 Architecture & Bindings
+---
 
-### The Hono Context
+## REST API
 
-This application relies on the `@cloudflare/workers-types` package to provide ambient globals and environment bindings. 
-In `src/index.ts`, the environment is typed like so:
+Every deployed `@waelio/sync` Worker exposes this API:
 
-```typescript
-type Bindings = {
-  SYNC_KV: KVNamespace;
-};
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/api/health` | Health check |
+| `POST` | `/api/items` | Create item |
+| `GET` | `/api/items` | List items (supports `?limit=&cursor=`) |
+| `GET` | `/api/items/:id` | Get single item |
+| `PATCH` | `/api/items/:id` | Update item |
+| `DELETE` | `/api/items/:id` | Delete item |
 
-const app = new Hono<{ Bindings: Bindings }>();
+### Item shape
+
+```ts
+interface SyncItem {
+  id: string           // UUID
+  title: string
+  content: string
+  tags: string[]
+  meta: Record<string, unknown>
+  createdAt: string    // ISO 8601
+  updatedAt: string    // ISO 8601
+}
 ```
 
-### KV Namespace (`SYNC_KV`)
+### Create payload
 
-The `SYNC_KV` binding is declared in the `wrangler.toml` file. It allows the worker to read and write globally distributed data.
-
-Example usage inside a route:
-
-```typescript
-app.get('/sync/status', async (c) => {
-  const status = await c.env.SYNC_KV.get('system_status');
-  return c.json({ status: status || 'unknown' });
-});
+```json
+{
+  "title": "My item",
+  "content": "Some content",
+  "tags": ["tag1", "tag2"],
+  "meta": { "source": "myapp" }
+}
 ```
 
-### Managing Secrets
+---
 
-Never hard-code credentials in the repository. Instead, inject secrets into your worker securely using Wrangler:
+## SDK Reference
+
+```ts
+import { SyncClient, createSyncClient, SyncError } from '@waelio/sync'
+
+// With options
+const sync = new SyncClient({
+  baseUrl: 'https://your-sync.workers.dev',
+  token: 'optional-bearer-token',
+  timeout: 5000
+})
+
+// Shorthand
+const sync = createSyncClient('https://your-sync.workers.dev')
+
+// Error handling
+try {
+  await sync.get('missing-id')
+} catch (err) {
+  if (err instanceof SyncError) {
+    console.log(err.status) // 404
+  }
+}
+```
+
+---
+
+## Local development
 
 ```bash
-npx wrangler secret put MY_API_KEY
+npm run dev       # Wrangler dev server on http://localhost:8787
+npm run typecheck # Type-check without deploying
 ```
 
-These secrets become available on the `c.env` object just like your KV bindings.
+---
 
-## 📦 About the Waelio Ecosystem
+## Part of the Waelio ecosystem
 
-`@waelio/sync` is a core utility package maintained by [Waelio](https://waelio.com). It works in tandem with other ecosystem tools like `@waelio/cli`, `@waelio/ustore`, and `@waelio/agent` to deliver seamless developer experiences and automated site scaffolding pipelines.
+`@waelio/sync` works alongside:
+- [`@waelio/ustore`](https://npmjs.com/package/@waelio/ustore) — client-side persistent state
+- [`@waelio/data`](https://npmjs.com/package/@waelio/data) — schema-first data modeling
+- [`@waelio/messaging`](https://npmjs.com/package/@waelio/messaging) — event-driven messaging
 
-For package statistics and more information, visit the [Waelio Dashboard](https://waelio.com).
+[Dashboard & stats on waelio.com →](https://waelio.com)
 
-## 📄 License
+## License
 
-This project is licensed under the [MIT License](./LICENSE).
+[MIT](LICENSE)

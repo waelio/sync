@@ -1,31 +1,47 @@
 {
   "name": "@waelio/sync",
-  "version": "1.0.6",
-  "description": "Cloudflare Workers sync app for the Waelio ecosystem",
+  "version": "2.0.0",
+  "description": "Edge-first data sync for Cloudflare Workers — deploy a sync backend or install the SDK",
   "author": "Waelio <waelio@waelio.com> (https://waelio.com)",
-  "homepage": "https://github.com/waelio/waelio-sync#readme",
+  "homepage": "https://github.com/waelio/sync#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/waelio/waelio-sync.git"
+    "url": "git+https://github.com/waelio/sync.git"
   },
   "bugs": {
-    "url": "https://github.com/waelio/waelio-sync/issues"
+    "url": "https://github.com/waelio/sync/issues"
   },
   "keywords": [
     "waelio",
     "sync",
     "cloudflare",
     "workers",
-    "hono"
+    "hono",
+    "kv",
+    "edge",
+    "real-time",
+    "sdk",
+    "typescript"
   ],
   "license": "MIT",
-  "main": "src/index.ts",
+  "type": "module",
+  "main": "src/sdk.ts",
+  "exports": {
+    ".": "./src/sdk.ts"
+  },
+  "files": [
+    "src/sdk.ts",
+    "src/index.ts",
+    "README.md",
+    "LICENSE"
+  ],
   "publishConfig": {
     "access": "public"
   },
   "scripts": {
-    "deploy": "wrangler pages deploy public",
-    "dev": "wrangler pages dev public"
+    "dev": "wrangler dev src/index.ts",
+    "deploy": "wrangler deploy src/index.ts",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "hono": "^4.0.0"
