@@ -1,6 +1,6 @@
 {
   "name": "@waelio/sync",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Edge-first data sync for Cloudflare Workers — deploy a sync backend or install the SDK",
   "author": "Waelio <waelio@waelio.com> (https://waelio.com)",
   "homepage": "https://github.com/waelio/sync#readme",
